@@ -1,6 +1,8 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <WiFi.h>
+#include <HTTPClient.h>
 
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
@@ -11,6 +13,12 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 #define BUTTON2_PIN 5  // Select/Submit
 #define BUTTON3_PIN 18 // Scroll Up/Increment
 #define BUTTON4_PIN 19 // Scroll Down/Decrement
+
+// Wi-Fi credentials
+const char* ssid = "Wokwi-GUEST";
+const char* password = "";
+// Backend URL
+const char* serverName = "https://bistro-92backend.onrender.com/api/orders";
 
 String menuItems[] = {"Burger", "Pizza", "Pasta"};
 int menuCount = 3;
@@ -37,6 +45,16 @@ void setup() {
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
+
+  // Connect to Wi-Fi
+  WiFi.begin(ssid, password);
+  Serial.print("Connecting to WiFi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nConnected to WiFi. IP: " + WiFi.localIP().toString());
+
   showMenu();
 }
 
@@ -91,20 +109,52 @@ void loop() {
         display.println("Order Sent!");
         display.display();
         Serial.println("Order Submitted: Table 1, " + cart);
+
+        // Send order to backend with retries
+        if (WiFi.status() == WL_CONNECTED) {
+          HTTPClient http;
+          http.setTimeout(15000); // 15-second timeout
+          http.begin(serverName);
+          http.addHeader("Content-Type", "application/json");
+
+          // Escape special characters in cart
+          String escapedCart = cart;
+          escapedCart.replace("\"", "\\\"");
+          String jsonData = "{\"table_number\":\"Table 1\",\"items\":\"" + escapedCart + "\"}";
+          Serial.println("Sending JSON: " + jsonData);
+
+          int attempts = 3;
+          int httpResponseCode = -1;
+          for (int i = 0; i < attempts && httpResponseCode <= 0; i++) {
+            Serial.println("Attempt " + String(i + 1) + " of " + String(attempts));
+            httpResponseCode = http.POST(jsonData);
+            if (httpResponseCode > 0) {
+              String response = http.getString();
+              Serial.println("HTTP Response code: " + String(httpResponseCode));
+              Serial.println("Response: " + response);
+              break;
+            } else {
+              Serial.println("Error on HTTP request: " + String(httpResponseCode));
+              delay(2000); // Wait before retry
+            }
+          }
+
+          if (httpResponseCode <= 0) {
+            Serial.println("All attempts failed. WiFi Status: " + String(WiFi.status()));
+          }
+          http.end();
+        } else {
+          Serial.println("WiFi Disconnected");
+        }
+
         cart = "";
         delay(2000);
-      } else {
-        display.clearDisplay();
-        display.setCursor(0, 0);
-        display.println("No Items in Cart");
-        display.display();
-        delay(2000);
+        inMenu = true;
+        inQuantity = false;
+        currentItem = 0;
+        quantity = 1;
+        showMenu();
       }
-      inMenu = true;
-      inQuantity = false;
-      currentItem = 0;
-      quantity = 1;
-      showMenu();
     } else { // Short press
       if (inMenu) {
         inMenu = false;
@@ -136,9 +186,9 @@ void showMenu() {
     display.println(menuItems[i]);
   }
   display.setTextSize(1);
-  display.setCursor(0, 50); // Place cart at bottom
+  display.setCursor(0, 50);
   String cartDisplay = cart == "" ? "Cart: Empty" : "Cart: " + cart;
-  if (cartDisplay.length() > 20) { // Limit to ~20 characters to fit 128px width
+  if (cartDisplay.length() > 20) {
     cartDisplay = cartDisplay.substring(0, 17) + "...";
   }
   display.println(cartDisplay);
