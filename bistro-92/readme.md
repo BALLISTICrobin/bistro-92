@@ -24,15 +24,20 @@ This project simulates a smart ordering device for the Bistro 92 Challenge, usin
 - **File**: [sketch.ino]()
 - **Libraries**: `Wire`, `Adafruit_GFX`, `Adafruit_SSD1306`
 - **Features**:
+
   - Menu navigation with scrolling (Buttons 3/4).
   - Item selection and quantity adjustment (Button 2, Buttons 3/4).
   - Cart tracking and order submission via serial output (Button 2 long press).
   - Order cancellation (Button 1).
   - **Cart Display**: Shows cart contents (e.g., “Cart: Burger x2, Pizza x1”) or “Cart: Empty” at the bottom of the OLED, with truncation for long strings.
 - **Testing**:
+
   - Verified all process flow steps (menu access, navigation, selection, quantity, submission, cancellation).
   - Tested cart display for empty carts, single/multiple items, long strings, and reset/submission.
   - Edge cases: empty cart submission, quantity < 1, rapid button presses.
+
+  ## FRONTEND LINK: [https://github.com/BALLISTICrobin/bistro92frontend.git](https://github.com/BALLISTICrobin/bistro92frontend.git)
+- BACKEND LINK: [https://github.com/BALLISTICrobin/bistro-92backend.git](https://github.com/BALLISTICrobin/bistro-92backend.git)
 
 ## Wokwi Simulation
 
